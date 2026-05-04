@@ -63,3 +63,13 @@ X_train, X_test, y_train, y_test = train_test_split(
 # print(X_test.shape)
 
 
+# Train Model 
+
+model = MultinomialNB()
+model.fit(X_train,y_train)
+
+# Test Model
+y_pred = model.predict(X_test)
+
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", accuracy)
