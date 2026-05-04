@@ -38,14 +38,17 @@ emails['label'] = emails['label'].astype(int)
 
 
 # Split Data 
-x = emails["message"]
-y = emails['label']
+X = emails["message"]
+Y = emails['label']
 
-# print(y)
-# print(x)
+# print(Y)
+# print(X)
 
 
-
+# Text → Numbers (Vectorization)  
+vectorizer = CountVectorizer(stop_words='english')
+X = vectorizer.fit_transform(X)
+print(X)
 
 
 
