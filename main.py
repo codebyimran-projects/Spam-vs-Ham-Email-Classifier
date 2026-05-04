@@ -1,3 +1,5 @@
+# Import Libraries 
+
 import pandas as pd
 import numpy as np
 
@@ -7,3 +9,8 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score
 
 import pickle
+
+
+# Load Dataset 
+emails = pd.read_csv('email.csv')
+print(emails.head())
