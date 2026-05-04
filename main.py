@@ -13,7 +13,7 @@ import pickle
 
 # Load Dataset 
 emails = pd.read_csv('email.csv', encoding='latin-1')
-
+# print(emails.shape)
 # Data Cleaning 
 emails = emails[['Category', 'Message']]
 
@@ -39,7 +39,7 @@ emails['label'] = emails['label'].astype(int)
 
 # Split Data 
 X = emails["message"]
-Y = emails['label']
+y = emails['label']
 
 # print(Y)
 # print(X)
@@ -48,8 +48,18 @@ Y = emails['label']
 # Text → Numbers (Vectorization)  
 vectorizer = CountVectorizer(stop_words='english')
 X = vectorizer.fit_transform(X)
-print(X)
+# print(X)
 
 
+
+# Train/Test Split  
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.2,
+    random_state=42
+)
+
+# print(X_train.shape)
+# print(X_test.shape)
 
 
