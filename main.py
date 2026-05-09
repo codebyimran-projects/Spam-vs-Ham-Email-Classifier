@@ -73,3 +73,11 @@ y_pred = model.predict(X_test)
 
 accuracy = accuracy_score(y_test, y_pred)
 print("Accuracy:", accuracy)
+
+# Predict Custom Email
+msg = input("Enter an email message: ")
+msg_vector = vectorizer.transform([msg])
+
+result = model.predict(msg_vector)
+
+print("Prediction:", "Spam" if result[0] == 1 else "Ham")
