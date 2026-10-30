@@ -14,7 +14,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from sklearn.preprocessing import LabelEncoder
-
+import nltk
+from nltk.tokenize import word_tokenize, sent_tokenize
 
 # 2. LOAD THE DATASET
 # ------------------------------------------------------------
@@ -189,3 +190,63 @@ print("Remaining Duplicates:", df.duplicated().sum())
 print("Final Categories:", df["Category"].unique())
 
 print("\nDATA CLEANING COMPLETED SUCCESSFULLY!")
+
+
+
+
+nltk.download("punkt")
+nltk.download("punkt_tab")
+
+
+# ============================================================
+# TEXT ANALYSIS USING NLTK
+# ============================================================
+
+# 1. WORD COUNT
+# Count the total number of words in each email
+
+df["Word_Count"] = df["Message"].apply(
+    lambda message: len(word_tokenize(message))
+)
+
+
+# 2. SENTENCE COUNT
+# Count the total number of sentences in each email
+
+df["Sentence_Count"] = df["Message"].apply(
+    lambda message: len(sent_tokenize(message))
+)
+
+
+# 3. CHARACTER COUNT
+# Count the total number of characters in each email
+
+df["Character_Count"] = df["Message"].apply(
+    lambda message: len(message)
+)
+
+
+# 4. ALPHABET COUNT
+# Count only alphabetic characters (A-Z and a-z)
+
+df["Alphabet_Count"] = df["Message"].apply(
+    lambda message: sum(char.isalpha() for char in message)
+)
+
+
+# DISPLAY RESULTS
+
+print("\n========== TEXT ANALYSIS RESULTS ==========")
+
+print(
+    df[
+        [
+            "Category",
+            "Message",
+            "Word_Count",
+            "Sentence_Count",
+            "Character_Count",
+            "Alphabet_Count"
+        ]
+    ].head(10)
+)
