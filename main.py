@@ -250,3 +250,58 @@ print(
         ]
     ].head(10)
 )
+
+
+# ============================================================
+# STAGE 3: EXPLORATORY DATA ANALYSIS (EDA)
+# ============================================================
+
+# Select numerical columns for correlation analysis
+
+numerical_columns = [
+    "Category",
+    "Word_Count",
+    "Sentence_Count",
+    "Character_Count",
+    "Alphabet_Count"
+]
+
+correlation_data = df[numerical_columns]
+
+print("\n========== CORRELATION DATA ==========")
+print(correlation_data.head())
+
+
+
+
+# Calculate Pearson correlation
+
+correlation_matrix = correlation_data.corr(method="pearson")
+
+print("\n========== CORRELATION MATRIX ==========")
+
+print(correlation_matrix.round(3))
+
+
+# ============================================================
+# CORRELATION HEATMAP
+# ============================================================
+
+plt.figure(figsize=(10, 7))
+
+sns.heatmap(
+    correlation_matrix,
+    annot=True,
+    cmap="coolwarm",
+    fmt=".2f",
+    linewidths=0.5,
+    square=True
+)
+
+plt.title("Correlation Heatmap of Email Features", fontsize=15)
+
+plt.show()
+
+
+
+
