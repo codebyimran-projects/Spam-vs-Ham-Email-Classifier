@@ -17,3 +17,12 @@ df = pd.read_csv("email.csv")
 # print("INFO OF THE DATASET")
 # print(df.info())
 
+# print("DESCRIPTION OF THE DATASET")
+# print(df.describe())
+
+
+# print("VALUE COUNTS OF THE FIRST COLUMN")
+# print(df.iloc[:, 0].value_counts())
+
+# print("VALUE COUNTS OF THE SECOND COLUMN")
+# print(df.iloc[:, 1].value_counts())
