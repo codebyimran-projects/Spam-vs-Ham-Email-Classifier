@@ -1,307 +1,245 @@
 
 # ============================================================
-# PROJECT: EMAIL SPAM CLASSIFIER
-# STAGE 1: DATASET LOADING, UNDERSTANDING & CLEANING
+# EMAIL SPAM CLASSIFIER
+# FEATURE EXTRACTION & MODEL TRAINING
 # ============================================================
 
-
-# 1. IMPORT REQUIRED LIBRARIES
-# ------------------------------------------------------------
-
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.preprocessing import LabelEncoder
-import nltk
-from nltk.tokenize import word_tokenize, sent_tokenize
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
 
-# 2. LOAD THE DATASET
-# ------------------------------------------------------------
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
+
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    classification_report,
+    confusion_matrix
+)
+
+
+# 1. LOAD AND CLEAN DATASET
 
 df = pd.read_csv("email.csv")
 
-print("\n========== DATASET LOADED SUCCESSFULLY ==========")
+df = df.dropna(subset=["Category", "Message"]).copy()
 
-
-# 3. UNDERSTAND THE DATASET
-# ------------------------------------------------------------
-
-# Display the first five records
-print("\nFIRST 5 ROWS:")
-print(df.head())
-
-# Display the last five records
-print("\nLAST 5 ROWS:")
-print(df.tail())
-
-# Display the number of rows and columns
-print("\nDATASET SHAPE:")
-print(df.shape)
-
-# Display column names, data types and non-null values
-print("\nDATASET INFORMATION:")
-df.info()
-
-# Display statistical information
-print("\nDATASET DESCRIPTION:")
-print(df.describe(include="all"))
-
-# Display the distribution of original category labels
-print("\nORIGINAL CATEGORY DISTRIBUTION:")
-print(df["Category"].value_counts())
-
-
-# 4. ENCODE CATEGORY LABELS
-# ------------------------------------------------------------
-
-# Convert text labels into numerical values.
-# LabelEncoder assigns numbers based on alphabetical order.
-# For the labels 'ham' and 'spam':
-# ham  = 0
-# spam = 1
-
-le = LabelEncoder()
-
-df["Category"] = le.fit_transform(df["Category"])
-
-print("\nENCODED CATEGORY LABELS:")
-print(dict(zip(le.classes_, le.transform(le.classes_))))
-
-print("\nCATEGORY DISTRIBUTION AFTER ENCODING:")
-print(df["Category"].value_counts())
-
-
-# 5. IDENTIFY DUPLICATE RECORDS
-# ------------------------------------------------------------
-
-# Find rows where all column values are duplicated
-duplicates = df[df.duplicated()]
-
-print("\nDUPLICATE RECORDS:")
-print(duplicates.head(10))
-
-print("\nTOTAL DUPLICATE RECORDS:")
-print(len(duplicates))
-
-
-# 6. IDENTIFY DUPLICATE EMAIL MESSAGES
-# ------------------------------------------------------------
-
-# Find repeated messages, even if their categories differ.
-# keep=False marks every occurrence of a repeated message.
-
-duplicate_messages = df[
-    df["Message"].duplicated(keep=False)
-].sort_values("Message")
-
-print("\nDUPLICATE EMAIL MESSAGES:")
-print(duplicate_messages.head(20))
-
-print("\nTOTAL ROWS WITH REPEATED MESSAGES:")
-print(len(duplicate_messages))
-
-
-# 7. REMOVE DUPLICATE RECORDS
-# ------------------------------------------------------------
-
-# Remove rows that are completely identical.
-# Keep the first occurrence of each duplicate record.
-
-df = df.drop_duplicates()
-
-# Reset the index after removing duplicates
-df = df.reset_index(drop=True)
-
-print("\nDATASET AFTER DUPLICATE REMOVAL:")
-print("Remaining duplicates:", df.duplicated().sum())
-print("Updated dataset shape:", df.shape)
-
-
-# 8. REMOVE UNKNOWN CATEGORY VALUES
-# ------------------------------------------------------------
-
-# This is a binary classification project:
-# 0 = Ham
-# 1 = Spam
-#
-# Keep only valid categories.
-# Remove records with unexpected category values.
-
-df = df[df["Category"].isin([0, 1])].copy()
-
-# Reset the index after filtering
-df = df.reset_index(drop=True)
-
-print("\nDATASET AFTER CATEGORY CLEANING:")
-
-print("\nCATEGORY COUNTS:")
-print(df["Category"].value_counts().sort_index())
-
-print("\nDATASET SHAPE:")
-print(df.shape)
-
-print("\nUNIQUE CATEGORY VALUES:")
-print(df["Category"].unique())
-
-
-# 9. VISUALIZE HAM VS SPAM DISTRIBUTION
-# ------------------------------------------------------------
-
-# Count the number of emails in each category.
-# sort_index() ensures 0 comes before 1.
-
-category_counts = df["Category"].value_counts().sort_index()
-
-# Create the pie chart
-plt.figure(figsize=(7, 7))
-
-plt.pie(
-    category_counts,
-    labels=["Ham", "Spam"],
-    autopct="%1.1f%%",
-    startangle=90,
-    explode=(0, 0.05),
-    shadow=True,
-    textprops={"fontsize": 12}
+df["Category"] = (
+    df["Category"]
+    .astype(str)
+    .str.strip()
+    .str.lower()
 )
 
-plt.title(
-    "Ham vs Spam Email Distribution",
-    fontsize=16,
-    fontweight="bold"
+# Convert category labels into binary numerical values
+df["Category"] = df["Category"].map({
+    "ham": 0,
+    "spam": 1,
+    "0": 0,
+    "1": 1
+})
+
+# Remove unknown categories and empty messages
+df = df.dropna(subset=["Category"])
+
+df["Message"] = (
+    df["Message"]
+    .astype(str)
+    .str.strip()
+    .str.replace(r"\s+", " ", regex=True)
 )
 
-plt.axis("equal")
-plt.show()
+df = df[df["Message"] != ""]
+
+# Remove duplicate records
+df = df.drop_duplicates().reset_index(drop=True)
+
+df["Category"] = df["Category"].astype(int)
 
 
-# 10. FINAL DATASET SUMMARY
-# ------------------------------------------------------------
+# 2. SEPARATE FEATURES AND TARGET
 
-print("\n========== FINAL DATASET SUMMARY ==========")
-
-print("Total Emails:", len(df))
-print("Total Columns:", len(df.columns))
-print("Ham Emails:", (df["Category"] == 0).sum())
-print("Spam Emails:", (df["Category"] == 1).sum())
-print("Remaining Duplicates:", df.duplicated().sum())
-print("Final Categories:", df["Category"].unique())
-
-print("\nDATA CLEANING COMPLETED SUCCESSFULLY!")
+X = df["Message"]
+y = df["Category"]
 
 
+# 3. SPLIT DATASET
 
-
-nltk.download("punkt")
-nltk.download("punkt_tab")
-
-
-# ============================================================
-# TEXT ANALYSIS USING NLTK
-# ============================================================
-
-# 1. WORD COUNT
-# Count the total number of words in each email
-
-df["Word_Count"] = df["Message"].apply(
-    lambda message: len(word_tokenize(message))
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=42,
+    stratify=y
 )
 
 
-# 2. SENTENCE COUNT
-# Count the total number of sentences in each email
+# 4. TEXT FEATURE EXTRACTION USING TF-IDF
 
-df["Sentence_Count"] = df["Message"].apply(
-    lambda message: len(sent_tokenize(message))
+tfidf = TfidfVectorizer(
+    lowercase=True,
+    stop_words="english",
+    ngram_range=(1, 2),
+    max_features=30000,
+    min_df=2,
+    max_df=0.95,
+    sublinear_tf=True
 )
 
-
-# 3. CHARACTER COUNT
-# Count the total number of characters in each email
-
-df["Character_Count"] = df["Message"].apply(
-    lambda message: len(message)
-)
+X_train_tfidf = tfidf.fit_transform(X_train)
+X_test_tfidf = tfidf.transform(X_test)
 
 
-# 4. ALPHABET COUNT
-# Count only alphabetic characters (A-Z and a-z)
+# 5. INITIALIZE CLASSIFICATION MODELS
 
-df["Alphabet_Count"] = df["Message"].apply(
-    lambda message: sum(char.isalpha() for char in message)
-)
+models = {
+    "Naive Bayes": MultinomialNB(),
+
+    "Logistic Regression": LogisticRegression(
+        max_iter=1000,
+        class_weight="balanced",
+        random_state=42
+    ),
+
+    "Linear SVM": LinearSVC(
+        class_weight="balanced",
+        random_state=42
+    )
+}
 
 
-# DISPLAY RESULTS
+# 6. TRAIN AND EVALUATE MODELS
 
-print("\n========== TEXT ANALYSIS RESULTS ==========")
+results = []
+trained_models = {}
+
+for name, model in models.items():
+
+    model.fit(X_train_tfidf, y_train)
+
+    predictions = model.predict(X_test_tfidf)
+
+    accuracy = accuracy_score(y_test, predictions)
+    precision = precision_score(
+        y_test, predictions, pos_label=1, zero_division=0
+    )
+    recall = recall_score(
+        y_test, predictions, pos_label=1, zero_division=0
+    )
+    f1 = f1_score(
+        y_test, predictions, pos_label=1, zero_division=0
+    )
+
+    results.append({
+        "Model": name,
+        "Accuracy": accuracy,
+        "Precision": precision,
+        "Recall": recall,
+        "F1 Score": f1
+    })
+
+    trained_models[name] = model
+
+
+# 7. COMPARE MODEL PERFORMANCE
+
+results_df = pd.DataFrame(results)
+
+results_df = results_df.sort_values(
+    by="F1 Score",
+    ascending=False
+).reset_index(drop=True)
+
+print("\nMODEL PERFORMANCE COMPARISON")
 
 print(
-    df[
-        [
-            "Category",
-            "Message",
-            "Word_Count",
-            "Sentence_Count",
-            "Character_Count",
-            "Alphabet_Count"
-        ]
-    ].head(10)
+    results_df.to_string(
+        index=False,
+        formatters={
+            "Accuracy": "{:.4f}".format,
+            "Precision": "{:.4f}".format,
+            "Recall": "{:.4f}".format,
+            "F1 Score": "{:.4f}".format
+        }
+    )
 )
 
 
-# ============================================================
-# STAGE 3: EXPLORATORY DATA ANALYSIS (EDA)
-# ============================================================
+# 8. SELECT BEST MODEL
 
-# Select numerical columns for correlation analysis
+best_model_name = results_df.iloc[0]["Model"]
+best_model = trained_models[best_model_name]
 
-numerical_columns = [
-    "Category",
-    "Word_Count",
-    "Sentence_Count",
-    "Character_Count",
-    "Alphabet_Count"
-]
-
-correlation_data = df[numerical_columns]
-
-print("\n========== CORRELATION DATA ==========")
-print(correlation_data.head())
+print("\nBEST MODEL:", best_model_name)
 
 
+# 9. CLASSIFICATION REPORT
+
+best_predictions = best_model.predict(X_test_tfidf)
+
+print("\nCLASSIFICATION REPORT")
+
+print(
+    classification_report(
+        y_test,
+        best_predictions,
+        target_names=["Ham", "Spam"],
+        zero_division=0
+    )
+)
 
 
-# Calculate Pearson correlation
+# 10. CONFUSION MATRIX
 
-correlation_matrix = correlation_data.corr(method="pearson")
+cm = confusion_matrix(
+    y_test,
+    best_predictions,
+    labels=[0, 1]
+)
 
-print("\n========== CORRELATION MATRIX ==========")
-
-print(correlation_matrix.round(3))
-
-
-# ============================================================
-# CORRELATION HEATMAP
-# ============================================================
-
-plt.figure(figsize=(10, 7))
+plt.figure(figsize=(7, 5))
 
 sns.heatmap(
-    correlation_matrix,
+    cm,
     annot=True,
-    cmap="coolwarm",
-    fmt=".2f",
-    linewidths=0.5,
-    square=True
+    fmt="d",
+    cmap="Blues",
+    xticklabels=["Ham", "Spam"],
+    yticklabels=["Ham", "Spam"]
 )
 
-plt.title("Correlation Heatmap of Email Features", fontsize=15)
+plt.title(f"Confusion Matrix - {best_model_name}")
+plt.xlabel("Predicted Category")
+plt.ylabel("Actual Category")
 
+plt.tight_layout()
 plt.show()
 
 
+# 11. MODEL PERFORMANCE GRAPH
 
+plot_data = results_df.set_index("Model")[
+    ["Accuracy", "Precision", "Recall", "F1 Score"]
+]
 
+plot_data.plot(
+    kind="bar",
+    figsize=(11, 6),
+    ylim=(0, 1),
+    width=0.8
+)
+
+plt.title("Classification Model Performance Comparison")
+plt.ylabel("Score")
+plt.xlabel("Machine Learning Models")
+plt.xticks(rotation=0)
+plt.legend(loc="lower right")
+plt.tight_layout()
+plt.show()
