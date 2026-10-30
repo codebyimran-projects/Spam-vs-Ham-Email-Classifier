@@ -49,3 +49,20 @@ df = df.drop_duplicates()
 
 print("Duplicates remaining:", df.duplicated().sum())
 print("New dataset shape:", df.shape)
+
+
+
+
+print("Ham vs Spam Distribution")
+plt.figure(figsize=(7, 5))
+
+sns.countplot(data=df, x="Category")
+
+plt.title("Ham vs Spam Distribution")
+plt.xlabel("Category (0 = Ham, 1 = Spam)")
+plt.ylabel("Number of Emails")
+
+plt.show()
+
+
+print(df["Category"].value_counts(normalize=True) * 100)
