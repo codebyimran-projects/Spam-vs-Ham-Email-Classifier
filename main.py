@@ -1,12 +1,7 @@
 
-# ============================================================
-# EMAIL SPAM CLASSIFIER
-# FEATURE EXTRACTION & MODEL TRAINING
-# ============================================================
-
+import os
+import joblib
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -20,25 +15,20 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     f1_score,
-    classification_report,
-    confusion_matrix
+    classification_report
 )
 
 
-# 1. LOAD AND CLEAN DATASET
+# 1. LOAD DATASET
 
 df = pd.read_csv("email.csv")
 
 df = df.dropna(subset=["Category", "Message"]).copy()
 
 df["Category"] = (
-    df["Category"]
-    .astype(str)
-    .str.strip()
-    .str.lower()
+    df["Category"].astype(str).str.strip().str.lower()
 )
 
-# Convert category labels into binary numerical values
 df["Category"] = df["Category"].map({
     "ham": 0,
     "spam": 1,
@@ -46,7 +36,6 @@ df["Category"] = df["Category"].map({
     "1": 1
 })
 
-# Remove unknown categories and empty messages
 df = df.dropna(subset=["Category"])
 
 df["Message"] = (
@@ -57,20 +46,14 @@ df["Message"] = (
 )
 
 df = df[df["Message"] != ""]
-
-# Remove duplicate records
 df = df.drop_duplicates().reset_index(drop=True)
-
 df["Category"] = df["Category"].astype(int)
 
 
-# 2. SEPARATE FEATURES AND TARGET
+# 2. SPLIT FEATURES AND TARGET
 
 X = df["Message"]
 y = df["Category"]
-
-
-# 3. SPLIT DATASET
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -81,7 +64,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 
-# 4. TEXT FEATURE EXTRACTION USING TF-IDF
+# 3. TF-IDF FEATURE EXTRACTION
 
 tfidf = TfidfVectorizer(
     lowercase=True,
@@ -97,7 +80,7 @@ X_train_tfidf = tfidf.fit_transform(X_train)
 X_test_tfidf = tfidf.transform(X_test)
 
 
-# 5. INITIALIZE CLASSIFICATION MODELS
+# 4. INITIALIZE MODELS
 
 models = {
     "Naive Bayes": MultinomialNB(),
@@ -115,7 +98,7 @@ models = {
 }
 
 
-# 6. TRAIN AND EVALUATE MODELS
+# 5. TRAIN AND EVALUATE MODELS
 
 results = []
 trained_models = {}
@@ -126,29 +109,24 @@ for name, model in models.items():
 
     predictions = model.predict(X_test_tfidf)
 
-    accuracy = accuracy_score(y_test, predictions)
-    precision = precision_score(
-        y_test, predictions, pos_label=1, zero_division=0
-    )
-    recall = recall_score(
-        y_test, predictions, pos_label=1, zero_division=0
-    )
-    f1 = f1_score(
-        y_test, predictions, pos_label=1, zero_division=0
-    )
-
     results.append({
         "Model": name,
-        "Accuracy": accuracy,
-        "Precision": precision,
-        "Recall": recall,
-        "F1 Score": f1
+        "Accuracy": accuracy_score(y_test, predictions),
+        "Precision": precision_score(
+            y_test, predictions, zero_division=0
+        ),
+        "Recall": recall_score(
+            y_test, predictions, zero_division=0
+        ),
+        "F1 Score": f1_score(
+            y_test, predictions, zero_division=0
+        )
     })
 
     trained_models[name] = model
 
 
-# 7. COMPARE MODEL PERFORMANCE
+# 6. SELECT BEST MODEL
 
 results_df = pd.DataFrame(results)
 
@@ -157,35 +135,17 @@ results_df = results_df.sort_values(
     ascending=False
 ).reset_index(drop=True)
 
-print("\nMODEL PERFORMANCE COMPARISON")
-
-print(
-    results_df.to_string(
-        index=False,
-        formatters={
-            "Accuracy": "{:.4f}".format,
-            "Precision": "{:.4f}".format,
-            "Recall": "{:.4f}".format,
-            "F1 Score": "{:.4f}".format
-        }
-    )
-)
-
-
-# 8. SELECT BEST MODEL
-
 best_model_name = results_df.iloc[0]["Model"]
 best_model = trained_models[best_model_name]
 
+print("\nMODEL PERFORMANCE:")
+print(results_df.to_string(index=False))
+
 print("\nBEST MODEL:", best_model_name)
-
-
-# 9. CLASSIFICATION REPORT
 
 best_predictions = best_model.predict(X_test_tfidf)
 
-print("\nCLASSIFICATION REPORT")
-
+print("\nCLASSIFICATION REPORT:")
 print(
     classification_report(
         y_test,
@@ -196,50 +156,22 @@ print(
 )
 
 
-# 10. CONFUSION MATRIX
+# 7. SAVE MODEL AND VECTORIZER
 
-cm = confusion_matrix(
-    y_test,
-    best_predictions,
-    labels=[0, 1]
+os.makedirs("models", exist_ok=True)
+
+joblib.dump(best_model, "models/spam_model.pkl")
+joblib.dump(tfidf, "models/tfidf_vectorizer.pkl")
+
+# Save selected model name and evaluation results
+joblib.dump(
+    {
+        "model_name": best_model_name,
+        "results": results_df.to_dict(orient="records")
+    },
+    "models/model_info.pkl"
 )
 
-plt.figure(figsize=(7, 5))
-
-sns.heatmap(
-    cm,
-    annot=True,
-    fmt="d",
-    cmap="Blues",
-    xticklabels=["Ham", "Spam"],
-    yticklabels=["Ham", "Spam"]
-)
-
-plt.title(f"Confusion Matrix - {best_model_name}")
-plt.xlabel("Predicted Category")
-plt.ylabel("Actual Category")
-
-plt.tight_layout()
-plt.show()
-
-
-# 11. MODEL PERFORMANCE GRAPH
-
-plot_data = results_df.set_index("Model")[
-    ["Accuracy", "Precision", "Recall", "F1 Score"]
-]
-
-plot_data.plot(
-    kind="bar",
-    figsize=(11, 6),
-    ylim=(0, 1),
-    width=0.8
-)
-
-plt.title("Classification Model Performance Comparison")
-plt.ylabel("Score")
-plt.xlabel("Machine Learning Models")
-plt.xticks(rotation=0)
-plt.legend(loc="lower right")
-plt.tight_layout()
-plt.show()
+print("\nMODEL SAVED SUCCESSFULLY!")
+print("Saved model:", "models/spam_model.pkl")
+print("Saved vectorizer:", "models/tfidf_vectorizer.pkl")
